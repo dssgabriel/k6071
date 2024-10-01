@@ -22,3 +22,20 @@ target_compile_options(
     -Wshadow
 )
 target_link_libraries(k6071 Kokkos::kokkos)
+
+add_executable(hip6071)
+target_sources(hip6071 PRIVATE src/hip.cpp)
+target_compile_features(hip6071 PRIVATE cxx_std_20)
+set_target_properties(hip6071 PROPERTIES CXX_EXTENSIONS OFF)
+if(K6071_RIGHT)
+  target_compile_definitions(hip6071 PRIVATE -DRIGHT)
+endif()
+target_compile_options(
+  hip6071
+  PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wshadow
+)
+target_link_libraries(hip6071 Kokkos::kokkos)
