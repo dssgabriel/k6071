@@ -69,7 +69,7 @@ auto main(int argc, char* argv[]) -> int {
   Kokkos::initialize(argc, argv);
   {
     size_t N = argc > 1 ? static_cast<size_t>(std::stoi(argv[1])) : 4096;
-    size_t R = argc > 2 ? static_cast<size_t>(std::stoi(argv[2])) : 10;
+    size_t R = argc > 2 ? static_cast<size_t>(std::stoi(argv[2])) : 11;
     int T1   = argc > 3 ? std::stoi(argv[3]) : -1;
     int T2   = argc > 4 ? std::stoi(argv[4]) : T1;
 
