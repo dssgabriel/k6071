@@ -4,6 +4,7 @@
 #include <iostream>
 
 #ifdef RIGHT
+#warning Using `Iterate::Right`
 using Iterate = Kokkos::Rank<2, Kokkos::Iterate::Right>;
 #else
 using Iterate = Kokkos::Rank<2, Kokkos::Iterate::Left>;
@@ -55,7 +56,7 @@ auto benchmark(size_t N, size_t R, int T1, int T2) -> void {
   gemm(A, B, C, T1, T2);
   Kokkos::fence();
   Kokkos::Timer timer;
-  for (int r = 0; r < R; r++) {
+  for (size_t r = 0; r < R; r++) {
     gemm(A, B, C, T1, T2);
   }
   Kokkos::fence();
