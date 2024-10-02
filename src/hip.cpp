@@ -1,6 +1,7 @@
 #include "utils.hpp"
 
 #include <iostream>
+#include <vector>
 
 #ifdef RIGHT
 #warning Using `Iterate::Right`
@@ -26,61 +27,70 @@ __global__ void gemm_kernel(T* A, T* B, T* C, size_t M, size_t N, size_t K) {
 }
 
 template <class T>
-auto gemm(Kokkos::View<T**> A, Kokkos::View<T**> B, Kokkos::View<T**> C, int T1, int T2) -> void {
-  size_t M = A.extent(0);
-  size_t K = A.extent(1);
-  size_t N = B.extent(1);
+auto gemm(T* A, size_t A_extent0, size_t A_extent1, T* B, size_t B_extent1, T* C, int T1, int T2) -> void {
+  size_t M = A_extent0;
+  size_t K = A_extent1;
+  size_t N = B_extent1;
 
   dim3 block_dim(T2 > 0 ? T2 : 16, T1 > 0 ? T1 : 16);
   dim3 grid_dim((N + block_dim.x - 1) / block_dim.x, (M + block_dim.y - 1) / block_dim.y);
 
-  gemm_kernel<T>
-    <<<grid_dim, block_dim, 0, hipStreamDefault>>>(
-      A.data(), B.data(), C.data(), M, N, K
-    );
+  gemm_kernel<T><<<grid_dim, block_dim, 0, hipStreamDefault>>>(A, B, C, M, N, K);
 }
 
 template <class T>
 auto benchmark(size_t N, size_t R, int T1, int T2) -> void {
+  size_t elems = N * N;
+  size_t bytes = elems * sizeof(T);
   double flops = 2.0 * static_cast<double>(N * N * N * R);
 
-  Kokkos::View<T**> A("A", N, N);
-  Kokkos::View<T**> B("B", N, N);
-  Kokkos::View<T**> C("C", N, N);
-  Kokkos::deep_copy(A, 1);
-  Kokkos::deep_copy(B, 1);
-  Kokkos::deep_copy(C, 1);
+  std::vector<T> h_A(elems, 1);
+  std::vector<T> h_B(elems, 1);
+  std::vector<T> h_C(elems);
 
-  gemm(A, B, C, T1, T2);
-  Kokkos::fence();
-  Kokkos::Timer timer;
+  T* d_A{};
+  T* d_B{};
+  T* d_C{};
+  HIP_CHECK(hipMalloc(&d_A, bytes));
+  HIP_CHECK(hipMalloc(&d_B, bytes));
+  HIP_CHECK(hipMalloc(&d_C, bytes));
+  HIP_CHECK(hipMemcpy(d_A, h_A.data(), bytes, hipMemcpyHostToDevice));
+  HIP_CHECK(hipMemcpy(d_B, h_B.data(), bytes, hipMemcpyHostToDevice));
+
+  gemm(d_A, N, N, d_B, N, d_C, T1, T2);
+  HIP_CHECK(hipDeviceSynchronize());
+  Timer timer;
   for (size_t r = 0; r < R; r++) {
-    gemm(A, B, C, T1, T2);
+    gemm(d_A, N, N, d_B, N, d_C, T1, T2);
   }
-  Kokkos::fence();
+  HIP_CHECK(hipDeviceSynchronize());
   double time = timer.seconds();
 
   std::cout << "Flops: " << flops << ", Bytes: " << sizeof(T) << ", GFlop/s: " << flops / time * 1.0e-9 << "\n";
+
+  HIP_CHECK(hipMemcpy(h_C.data(), d_C, bytes, hipMemcpyDeviceToHost));
+
 #ifdef CHECK
   check_result(h_C.data(), N);
 #endif
+
+  HIP_CHECK(hipFree(d_A));
+  HIP_CHECK(hipFree(d_B));
+  HIP_CHECK(hipFree(d_C));
 }
 
 auto main(int argc, char* argv[]) -> int {
-  Kokkos::initialize(argc, argv);
-  {
-    size_t N = argc > 1 ? static_cast<size_t>(std::stoi(argv[1])) : 4096;
-    size_t R = argc > 2 ? static_cast<size_t>(std::stoi(argv[2])) : 11;
-    int T1   = argc > 3 ? std::stoi(argv[3]) : -1;
-    int T2   = argc > 4 ? std::stoi(argv[4]) : T1;
+  // Matrix dimensions
+  size_t N = argc > 1 ? static_cast<size_t>(std::stoi(argv[1])) : 4096;
+  // Benchmark repetitions
+  size_t R = argc > 2 ? static_cast<size_t>(std::stoi(argv[2])) : 11;
+  // Block sizes to use when running the HIP kernel
+  int T1 = argc > 3 ? std::stoi(argv[3]) : -1;
+  int T2 = argc > 4 ? std::stoi(argv[4]) : T1;
 
-    benchmark<double>(N, R, T1, T2);
-    benchmark<float>(N, R, T1, T2);
-#if KOKKOS_VERSION >= 30700
-    benchmark<Kokkos::Experimental::half_t>(N, R, T1, T2);
-#endif
-  }
-  Kokkos::finalize();
+  benchmark<double>(N, R, T1, T2);
+  benchmark<float>(N, R, T1, T2);
+  benchmark<_Float16>(N, R, T1, T2);
 
   return 0;
 }

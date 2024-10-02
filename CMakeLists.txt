@@ -63,4 +63,4 @@ target_compile_options(
     -Wpedantic
     -Wshadow
 )
-target_link_libraries(hip6071 Kokkos::kokkos)
+target_link_libraries(hip6071 utils)
