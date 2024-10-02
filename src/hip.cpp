@@ -1,7 +1,5 @@
-#include <Kokkos_Core.hpp>
-#include <hip/hip_runtime.h>
+#include "utils.hpp"
 
-#include <cmath>
 #include <iostream>
 
 #ifdef RIGHT
@@ -63,6 +61,9 @@ auto benchmark(size_t N, size_t R, int T1, int T2) -> void {
   double time = timer.seconds();
 
   std::cout << "Flops: " << flops << ", Bytes: " << sizeof(T) << ", GFlop/s: " << flops / time * 1.0e-9 << "\n";
+#ifdef CHECK
+  check_result(h_C.data(), N);
+#endif
 }
 
 auto main(int argc, char* argv[]) -> int {
