@@ -21,6 +21,16 @@ constexpr int error_exit_code = -1;
     }                                                                                                                  \
   }
 
+#define CUDA_CHECK(condition)                                                                                          \
+  {                                                                                                                    \
+    cudaError_t const err = condition;                                                                                 \
+    if (err != cudaSuccess) {                                                                                          \
+      std::cerr << "CUDA Runtime error at: " << __FILE__ << ":" << __LINE__ << "\n"                                    \
+                << "  " << cudaGetErrorString(err) << "\n";                                                            \
+      std::exit(error_exit_code);                                                                                      \
+    }                                                                                                                  \
+  }
+
 class Timer {
 public:
   Timer() { start = std::chrono::high_resolution_clock::now(); }

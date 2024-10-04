@@ -8,6 +8,9 @@ add_subdirectory(kokkos)
 # Backend selection
 option(K6071_HIP "Compile HIP version" OFF)
 set(K6071_HIP ${K6071_ENABLE_HIP} CACHE BOOL "" FORCE)
+option(K6071_ENABLE_CUDA "Compile CUDA version" OFF)
+set(K6071_CUDA ${K6071_ENABLE_CUDA} CACHE BOOL "" FORCE)
+
 option(K6071_ENABLE_RIGHT "Use Iterate::Right" OFF)
 set(K6071_RIGHT ${K6071_ENABLE_RIGHT} CACHE BOOL "" FORCE)
 
@@ -75,4 +78,44 @@ if(K6071_HIP)
   target_link_libraries(hip utils)
 endif()
 
+if(K6071_CUDA)
+  enable_language(CUDA)
+
+  add_executable(cuda)
+  target_sources(cuda PRIVATE src/cuda.cu)
+  target_compile_features(cuda PRIVATE cxx_std_20)
+  set_target_properties(cuda PROPERTIES CXX_EXTENSIONS OFF)
+  set_target_properties(cuda PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+  if(K6071_RIGHT)
+    target_compile_definitions(cuda PRIVATE -DRIGHT)
+  endif()
+  if(K6071_CHECK_RES)
+    target_compile_definitions(cuda PRIVATE -DCHECK)
+  endif()
+  target_compile_options(
+    cuda
+    PRIVATE
+      -Wall
+      -Wextra
+      -Wpedantic
+      -Wshadow
+  )
+  target_link_libraries(cuda utils)
 endif()
+
+# add_executable(test)
+# target_sources(test PRIVATE src/test.cpp)
+# target_compile_features(test PRIVATE cxx_std_20)
+# set_target_properties(test PROPERTIES CXX_EXTENSIONS OFF)
+# if(K6071_RIGHT)
+#   target_compile_definitions(test PRIVATE -DRIGHT)
+# endif()
+# target_compile_options(
+#   test
+#   PRIVATE
+#     -Wall
+#     -Wextra
+#     -Wpedantic
+#     -Wshadow
+# )
+# target_link_libraries(test Kokkos::kokkos)
