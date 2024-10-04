@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.23)
 project(K6071 LANGUAGES CXX)
 
+# Enable color for Ninja output
 set(CMAKE_COLOR_DIAGNOSTICS ON)
 
 add_subdirectory(kokkos)
@@ -11,10 +12,12 @@ set(K6071_HIP ${K6071_ENABLE_HIP} CACHE BOOL "" FORCE)
 option(K6071_ENABLE_CUDA "Compile CUDA version" OFF)
 set(K6071_CUDA ${K6071_ENABLE_CUDA} CACHE BOOL "" FORCE)
 
+# Enable iteration with Layout Right (row-major) or not
 option(K6071_ENABLE_RIGHT "Use Iterate::Right" OFF)
 set(K6071_RIGHT ${K6071_ENABLE_RIGHT} CACHE BOOL "" FORCE)
 
-option(K6071_ENABLE_CHECK_RES "Check that computed result is correct" OFF)
+# Enable checking result
+option(K6071_ENABLE_CHECK_RES "Check that computed result is correct" ON)
 set(K6071_CHECK_RES ${K6071_ENABLE_CHECK_RES} CACHE BOOL "" FORCE)
 
 add_library(utils INTERFACE)
@@ -36,6 +39,7 @@ target_compile_options(
     -Wshadow
 )
 
+# Pure Kokkos reproducer
 add_executable(kok)
 target_sources(kok PRIVATE src/kokkos.cpp)
 target_compile_features(kok PRIVATE cxx_std_20)
@@ -56,6 +60,7 @@ target_compile_options(
 )
 target_link_libraries(kok Kokkos::kokkos utils)
 
+# If enabled, compile a pure HIP implementation
 if(K6071_HIP)
   add_executable(hip)
   target_sources(hip PRIVATE src/hip.cpp)
@@ -78,6 +83,7 @@ if(K6071_HIP)
   target_link_libraries(hip utils)
 endif()
 
+# If enabled, compile a pure CUDA implementation
 if(K6071_CUDA)
   enable_language(CUDA)
 
@@ -103,19 +109,20 @@ if(K6071_CUDA)
   target_link_libraries(cuda utils)
 endif()
 
-# add_executable(test)
-# target_sources(test PRIVATE src/test.cpp)
-# target_compile_features(test PRIVATE cxx_std_20)
-# set_target_properties(test PROPERTIES CXX_EXTENSIONS OFF)
-# if(K6071_RIGHT)
-#   target_compile_definitions(test PRIVATE -DRIGHT)
-# endif()
-# target_compile_options(
-#   test
-#   PRIVATE
-#     -Wall
-#     -Wextra
-#     -Wpedantic
-#     -Wshadow
-# )
-# target_link_libraries(test Kokkos::kokkos)
+# Test for understanding how MDRangePolicy and Iterate::* work.
+add_executable(test)
+target_sources(test PRIVATE src/test.cpp)
+target_compile_features(test PRIVATE cxx_std_20)
+set_target_properties(test PROPERTIES CXX_EXTENSIONS OFF)
+if(K6071_RIGHT)
+  target_compile_definitions(test PRIVATE -DRIGHT)
+endif()
+target_compile_options(
+  test
+  PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wshadow
+)
+target_link_libraries(test Kokkos::kokkos)
