@@ -1,5 +1,7 @@
 #include "utils.hpp"
 
+#include <hip/hip_runtime.h>
+
 #include <iostream>
 #include <vector>
 
@@ -10,19 +12,26 @@
 template <class T>
 __global__ void gemm_kernel(T* A, T* B, T* C, size_t M, size_t N, size_t K) {
 #ifdef RIGHT
-  size_t m = blockIdx.x * blockDim.x + threadIdx.x;
-  size_t n = blockIdx.y * blockDim.y + threadIdx.y;
+  size_t i = blockIdx.x * blockDim.x + threadIdx.x;
+  size_t j = blockIdx.y * blockDim.y + threadIdx.y;
 #else
-  size_t m = blockIdx.y * blockDim.y + threadIdx.y;
-  size_t n = blockIdx.x * blockDim.x + threadIdx.x;
+  size_t j = blockIdx.x * blockDim.x + threadIdx.x;
+  size_t i = blockIdx.y * blockDim.y + threadIdx.y;
 #endif
 
-  if (m < M && n < N) {
+  if (i < M && j < N) {
     T tmp = 0.0;
+#ifdef RIGHT
     for (size_t k = 0; k < K; ++k) {
-      tmp += A[m * K + k] * B[k * N + n];
+      tmp += A[k * M + i] * B[j * K + k];
     }
-    C[m * N + n] = tmp;
+    C[j * M + i] = tmp;
+#else
+    for (size_t k = 0; k < K; ++k) {
+      tmp += A[i * K + k] * B[k * N + j];
+    }
+    C[i * N + j] = tmp;
+#endif
   }
 }
 

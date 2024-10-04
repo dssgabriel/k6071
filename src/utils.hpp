@@ -1,10 +1,9 @@
 #pragma once
 
-#include <hip/hip_runtime.h>
-
-#include <cassert>
+#include <cmath>
 #include <chrono>
 #include <cstddef>
+#include <limits>
 
 constexpr int error_exit_code = -1;
 
@@ -14,10 +13,10 @@ constexpr int error_exit_code = -1;
  **/
 #define HIP_CHECK(condition)                                                                                           \
   {                                                                                                                    \
-    const hipError_t error = condition;                                                                                \
-    if (error != hipSuccess) {                                                                                         \
-      std::cerr << "An error encountered: \"" << hipGetErrorString(error) << "\" at " << __FILE__ << ':' << __LINE__   \
-                << std::endl;                                                                                          \
+    hipError_t const err = condition;                                                                                  \
+    if (err != hipSuccess) {                                                                                           \
+      std::cerr << "HIP Runtime error at: " << __FILE__ << ":" << __LINE__ << "\n"                                     \
+                << "  " << hipGetErrorString(err) << "\n";                                                             \
       std::exit(error_exit_code);                                                                                      \
     }                                                                                                                  \
   }
@@ -36,10 +35,14 @@ private:
 };
 
 template <class T>
-auto check_result(T const* C, size_t extent) -> void {
-  for (size_t i = 0; i < extent; ++i) {
-    for (size_t j = 0; j < extent; ++j) {
-      assert(C[i * extent + j] == 1);
+auto check_result(T* const C, size_t extent) -> bool {
+  constexpr T tol = std::numeric_limits<T>::epsilon();
+  constexpr T one = 1.0;
+  for (size_t i = 0; i < extent * extent; ++i) {
+    auto val = C[i];
+    if (tol > std::abs(val - one)) {
+      return false;
     }
   }
+  return true;
 }
