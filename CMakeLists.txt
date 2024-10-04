@@ -33,22 +33,25 @@ target_compile_options(
     -Wshadow
 )
 
-add_executable(k6071)
-target_sources(k6071 PRIVATE src/kokkos.cpp)
-target_compile_features(k6071 PRIVATE cxx_std_20)
-set_target_properties(k6071 PROPERTIES CXX_EXTENSIONS OFF)
+add_executable(kok)
+target_sources(kok PRIVATE src/kokkos.cpp)
+target_compile_features(kok PRIVATE cxx_std_20)
+set_target_properties(kok PROPERTIES CXX_EXTENSIONS OFF)
 if(K6071_RIGHT)
-  target_compile_definitions(k6071 PRIVATE -DRIGHT)
+  target_compile_definitions(kok PRIVATE -DRIGHT)
+endif()
+if(K6071_CHECK_RES)
+  target_compile_definitions(kok PRIVATE -DCHECK)
 endif()
 target_compile_options(
-  k6071
+  kok
   PRIVATE
     -Wall
     -Wextra
     -Wpedantic
     -Wshadow
 )
-target_link_libraries(k6071 Kokkos::kokkos)
+target_link_libraries(kok Kokkos::kokkos utils)
 
 if(K6071_HIP)
   add_executable(hip)
